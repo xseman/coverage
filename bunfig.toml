@@ -1,0 +1,4 @@
+[test]
+coveragePathIgnorePatterns = [
+	"src/fixtures/**",
+]

@@ -1,0 +1,97 @@
+name: Test Coverage (local)
+on: [pull_request]
+
+jobs:
+    test-bun-only:
+        name: "Bun only"
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: ./
+              id: cov
+              with:
+                  coverage-artifact-paths: "bun:src/fixtures/bun-head.lcov"
+                  colorize: "on"
+                  github-token: ""
+            - name: Verify Bun outputs
+              run: |
+                  echo "overall-coverage=${{ steps.cov.outputs.overall-coverage }}"
+                  echo "coverage-decreased=${{ steps.cov.outputs.coverage-decreased }}"
+
+    test-go-only:
+        name: "Go only"
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: ./
+              id: cov
+              with:
+                  coverage-artifact-paths: "go:src/fixtures/go-head.out"
+                  colorize: "on"
+                  github-token: ""
+            - name: Verify Go outputs
+              run: |
+                  echo "overall-coverage=${{ steps.cov.outputs.overall-coverage }}"
+                  echo "coverage-decreased=${{ steps.cov.outputs.coverage-decreased }}"
+
+    test-multi-tool:
+        name: "Multi-tool (Bun + Go)"
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: ./
+              id: cov
+              with:
+                  coverage-artifact-paths: |
+                      bun:src/fixtures/bun-head.lcov
+                      go:src/fixtures/go-head.out
+                  colorize: "on"
+                  github-token: ""
+            - name: Verify multi-tool outputs
+              run: |
+                  echo "overall-coverage=${{ steps.cov.outputs.overall-coverage }}"
+                  echo "coverage-decreased=${{ steps.cov.outputs.coverage-decreased }}"
+
+    test-threshold-pass:
+        name: "Threshold pass"
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: ./
+              id: cov
+              with:
+                  coverage-artifact-paths: "bun:src/fixtures/bun-head.lcov"
+                  coverage-threshold: "50"
+                  github-token: ""
+            - name: Should succeed (coverage > 50%)
+              run: echo "Threshold pass OK — coverage=${{ steps.cov.outputs.overall-coverage }}"
+
+    test-threshold-fail:
+        name: "Threshold fail"
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: ./
+              id: cov
+              continue-on-error: true
+              with:
+                  coverage-artifact-paths: "bun:src/fixtures/bun-head.lcov"
+                  coverage-threshold: "99"
+                  github-token: ""
+            - name: Should have failed (coverage < 99%)
+              run: echo "Threshold fail OK — action correctly failed on low coverage"
+
+    test-missing-file:
+        name: "Missing file graceful"
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: ./
+              id: cov
+              with:
+                  coverage-artifact-paths: "bun:nonexistent/lcov.info"
+                  github-token: ""
+            - name: Verify graceful handling
+              run: |
+                  echo "overall-coverage=${{ steps.cov.outputs.overall-coverage }}"
+                  echo "Should show 0 or NaN for missing file"

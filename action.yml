@@ -1,0 +1,54 @@
+name: "Coverage"
+description: "Parse Bun (LCOV) and Go coverage, compute per-file deltas, and post a sticky PR comment with monospace coverage output."
+author: "xseman"
+
+branding:
+    icon: "bar-chart-2"
+    color: "green"
+
+inputs:
+    coverage-artifact-paths:
+        description: >
+            Newline- or comma-separated list of coverage artifact paths.
+            Each entry is `<tool>:<path>`, e.g. `bun:coverage/lcov.info` or `go:coverage.out`.
+        required: true
+    base-branch:
+        description: "Target branch for comparison (e.g. main). Defaults to the PR base ref."
+        required: false
+        default: ""
+    cache-key:
+        description: "Custom cache key prefix for storing coverage artifacts."
+        required: false
+        default: "coverage-reporter"
+    update-comment-marker:
+        description: "Unique marker string to identify the sticky comment."
+        required: false
+        default: "<!-- coverage-reporter-sticky -->"
+    colorize:
+        description: "Enable colorized delta markers in the comment (on/off)."
+        required: false
+        default: "on"
+    fail-on-decrease:
+        description: "Fail the action if any file coverage decreases (true/false)."
+        required: false
+        default: "false"
+    coverage-threshold:
+        description: "Minimum overall coverage percentage. Fail if below this (0-100). Set 0 to disable."
+        required: false
+        default: "0"
+    github-token:
+        description: "GitHub token for posting PR comments. Defaults to GITHUB_TOKEN."
+        required: false
+        default: ${{ github.token }}
+
+outputs:
+    overall-coverage:
+        description: "Overall coverage percentage across all tools."
+    coverage-decreased:
+        description: "'true' if any file had a coverage decrease."
+    comment-id:
+        description: "ID of the created/updated PR comment."
+
+runs:
+    using: "node20"
+    main: "lib/index.js"

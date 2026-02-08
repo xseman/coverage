@@ -1,0 +1,42 @@
+{
+	"name": "coverage",
+	"description": "GitHub Action: parse coverage, post sticky PR comment with deltas",
+	"type": "module",
+	"version": "0.1.0",
+	"license": "Apache-2.0",
+	"funding": "https://github.com/sponsors/xseman",
+	"homepage": "https://github.com/xseman/coverage",
+	"author": "Filip Seman <filip.seman@pm.me>",
+	"keywords": [
+		"github",
+		"action",
+		"coverage",
+		"reporter",
+		"diff"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/xseman/coverage.git"
+	},
+	"scripts": {
+		"build": "bun build src/index.ts --minify --production --target=node --outdir=lib --format=esm --entry-naming [dir]/[name].js",
+		"fmt": "dprint fmt",
+		"fmt:check": "dprint check",
+		"typecheck": "tsc --noEmit",
+		"test": "bun test",
+		"test:watch": "bun test --watch",
+		"test:coverage": "bun test --coverage",
+		"lint": "bun run typecheck && bun run fmt:check"
+	},
+	"dependencies": {
+		"@actions/cache": "^6.0.0",
+		"@actions/core": "^3.0.0",
+		"@actions/github": "^9.0.0"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.3.8",
+		"@types/node": "^25.2.2",
+		"dprint": "^0.51.1",
+		"typescript": "^5.9.3"
+	}
+}
