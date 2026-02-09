@@ -74,5 +74,5 @@ jobs:
                   bun-version: latest
             - run: bun install --frozen-lockfile
             - run: bun run build
-            - name: Check lib/index.mjs exists
-              run: test -f lib/index.mjs
+            - name: Check lib/index.js exists
+              run: test -f lib/index.js

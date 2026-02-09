@@ -61,6 +61,6 @@ jobs:
               run: |
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git add lib/index.mjs
+                  git add lib/index.js
                   git commit -m "build: update lib/index.js for ${{ github.event_name == 'push' && needs.release-please.outputs.tag_name || inputs.tag }}" || echo "No changes to commit"
                   git push origin master
