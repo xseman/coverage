@@ -27,13 +27,8 @@ import type {
 	FileCoverage,
 } from "./types";
 
-// ── Helpers ─────────────────────────────────────────────────────────
-
 const FIXTURES = join(import.meta.dir, "fixtures");
 const read = (name: string) => readFileSync(join(FIXTURES, name), "utf-8");
-
-// ── Pre-computed expectations ───────────────────────────────────────
-// Manually counted from the fixture files so the tests are deterministic.
 
 /**
  * bun-head.lcov expected per-file results (DA-line counting):
@@ -69,10 +64,6 @@ const BUN_BASE_EXPECTED: Record<string, { covered: number; total: number; pct: n
 	"src/legacy/deprecated.ts": { covered: 5, total: 10, pct: 50 },
 };
 
-// ═════════════════════════════════════════════════════════════════════
-// §1  Bun / LCOV — parse real tool output
-// ═════════════════════════════════════════════════════════════════════
-
 describe("Bun LCOV integration", () => {
 	let headFiles: FileCoverage[];
 	let baseFiles: FileCoverage[];
@@ -81,8 +72,6 @@ describe("Bun LCOV integration", () => {
 		headFiles = parseLcov(read("bun-head.lcov"));
 		baseFiles = parseLcov(read("bun-base.lcov"));
 	});
-
-	// ── Parsing ─────────────────────────────────────────────────────
 
 	test("head: parses all 5 files", () => {
 		expect(headFiles).toHaveLength(5);
@@ -111,8 +100,6 @@ describe("Bun LCOV integration", () => {
 			expect(f.percent).toBe(exp.pct);
 		}
 	});
-
-	// ── Diffing ─────────────────────────────────────────────────────
 
 	test("diff: detects deleted file from base (legacy/deprecated.ts)", () => {
 		const diffs = computeFileDiffs(headFiles, baseFiles);
@@ -159,8 +146,6 @@ describe("Bun LCOV integration", () => {
 		expect(store!.delta).toBe(0);
 	});
 
-	// ── Report building ─────────────────────────────────────────────
-
 	test("buildToolReport: summary aggregates correctly", () => {
 		const baseArtifact: CoverageArtifact = {
 			tool: "bun",
@@ -198,10 +183,6 @@ describe("Bun LCOV integration", () => {
 		expect(report.files).toHaveLength(6);
 	});
 });
-
-// ═════════════════════════════════════════════════════════════════════
-// §2  Go — parse real tool output
-// ═════════════════════════════════════════════════════════════════════
 
 /**
  * go-head.out expected per-file (statement counting):
@@ -258,8 +239,6 @@ describe("Go cover profile integration", () => {
 		baseFiles = parseGoCover(read("go-base.out"));
 	});
 
-	// ── Parsing ─────────────────────────────────────────────────────
-
 	test("head: parses all 8 files", () => {
 		expect(headFiles).toHaveLength(8);
 	});
@@ -293,8 +272,6 @@ describe("Go cover profile integration", () => {
 		const sorted = [...paths].sort();
 		expect(paths).toEqual(sorted);
 	});
-
-	// ── Diffing ─────────────────────────────────────────────────────
 
 	test("diff: detects deleted file (deprecated/old.go)", () => {
 		const diffs = computeFileDiffs(headFiles, baseFiles);
@@ -345,8 +322,6 @@ describe("Go cover profile integration", () => {
 		}
 	});
 
-	// ── Report building ─────────────────────────────────────────────
-
 	test("buildToolReport: summary aggregates correctly", () => {
 		const baseArtifact: CoverageArtifact = {
 			tool: "go",
@@ -371,10 +346,6 @@ describe("Go cover profile integration", () => {
 		expect(report.summary.delta).toBeGreaterThan(0);
 	});
 });
-
-// ═════════════════════════════════════════════════════════════════════
-// §3  Multi-tool full pipeline (Bun + Go combined)
-// ═════════════════════════════════════════════════════════════════════
 
 describe("Multi-tool full pipeline", () => {
 	let bunHead: FileCoverage[];
@@ -496,10 +467,6 @@ describe("Multi-tool full pipeline", () => {
 		expect(md).toContain("unexpected format");
 	});
 });
-
-// ═════════════════════════════════════════════════════════════════════
-// §4  Edge cases — malformed / partial tool outputs
-// ═════════════════════════════════════════════════════════════════════
 
 describe("Edge cases with real-ish tool output", () => {
 	test("LCOV: file with only branch data (no DA lines) uses LH/LF fallback", () => {
@@ -662,10 +629,6 @@ github.com/myorg/app/dead.go:22.1,25.2 3 0
 		expect(md).toContain("Go Coverage:");
 	});
 });
-
-// ═════════════════════════════════════════════════════════════════════
-// §5  Numeric precision & percentage calculations
-// ═════════════════════════════════════════════════════════════════════
 
 describe("Numeric precision", () => {
 	test("LCOV percentages are rounded to 2 decimal places", () => {

@@ -11,6 +11,12 @@ import {
 } from "./cache.js";
 import { upsertComment } from "./comment.js";
 import {
+	resolveBaseBranch,
+	resolveCurrentBranch,
+	resolveHeadSha,
+	resolvePrNumber,
+} from "./context.js";
+import {
 	buildFullReport,
 	buildToolReport,
 } from "./diff.js";
@@ -21,8 +27,6 @@ import type {
 	ArtifactInput,
 	FileCoverage,
 } from "./types.js";
-
-// ── Input parsing ───────────────────────────────────────────────────
 
 function parseArtifactInputs(raw: string): ArtifactInput[] {
 	return raw
@@ -84,25 +88,11 @@ function parseFile(tool: string, filePath: string): { files: FileCoverage[]; war
 	}
 }
 
-// ── Determine PR number ─────────────────────────────────────────────
-
-function getPrNumber(): number | null {
-	const pr = github.context.payload.pull_request;
-	if (pr) return pr.number;
-	// For push events on branches with open PRs, the caller must supply the PR number
-	// via the github context or we skip commenting.
-	return null;
-}
-
-// ── Main ────────────────────────────────────────────────────────────
-
 async function run(): Promise<void> {
 	try {
 		// Read inputs
 		const artifactPathsRaw = core.getInput("coverage-artifact-paths", { required: true });
-		const baseBranch = core.getInput("base-branch")
-			|| github.context.payload.pull_request?.base?.ref
-			|| "main";
+		const inputBaseBranch = core.getInput("base-branch");
 		const cacheKeyPrefix = core.getInput("cache-key") || "coverage-reporter";
 		const marker = core.getInput("update-comment-marker")
 			|| "<!-- coverage-reporter-sticky -->";
@@ -110,10 +100,13 @@ async function run(): Promise<void> {
 		const failOnDecrease = core.getInput("fail-on-decrease") === "true";
 		const threshold = parseFloat(core.getInput("coverage-threshold") || "0");
 		const token = core.getInput("github-token") || process.env.GITHUB_TOKEN || "";
+		const prNumberInput = core.getInput("pull-request-number");
+		const showCommitLink = core.getInput("show-commit-link") !== "off";
 
-		const commitSha = github.context.sha;
-		const currentBranch = github.context.payload.pull_request?.head?.ref
-			|| github.context.ref.replace("refs/heads/", "");
+		// Resolve context-dependent values
+		const baseBranch = resolveBaseBranch(inputBaseBranch);
+		const commitSha = resolveHeadSha();
+		const currentBranch = resolveCurrentBranch();
 
 		// Parse artifact inputs
 		const inputs = parseArtifactInputs(artifactPathsRaw);
@@ -168,14 +161,16 @@ async function run(): Promise<void> {
 		const fullReport = buildFullReport(toolReports);
 
 		// Render markdown
-		const markdown = renderReport(fullReport, marker, colorize);
+		const { owner, repo } = github.context.repo;
+		const commitInfo = showCommitLink ? { sha: commitSha, owner, repo } : undefined;
+		const markdown = renderReport(fullReport, marker, colorize, commitInfo);
 
 		// Set outputs
 		core.setOutput("overall-coverage", fullReport.overall.percent.toFixed(2));
 		core.setOutput("coverage-decreased", anyDecrease ? "true" : "false");
 
 		// Post / update PR comment
-		const prNumber = getPrNumber();
+		const prNumber = await resolvePrNumber(prNumberInput, token);
 		if (prNumber && token) {
 			try {
 				core.info(`Upserting comment on PR #${prNumber}`);
@@ -194,7 +189,12 @@ async function run(): Promise<void> {
 				core.info(markdown);
 			}
 		} else {
-			core.info("Not in a PR context or no token — skipping comment.");
+			if (!prNumber) {
+				core.warning(
+					"Could not determine PR number. Set the `pull-request-number` input "
+						+ "or ensure the action runs on pull_request / workflow_run events.",
+				);
+			}
 			// Still output the rendered markdown to the action log
 			core.info("--- Coverage Report ---");
 			core.info(markdown);

@@ -3,7 +3,11 @@ import type {
 	ToolCoverageReport,
 } from "./types.js";
 
-// ── Helpers ─────────────────────────────────────────────────────────
+export interface CommitInfo {
+	sha: string;
+	owner: string;
+	repo: string;
+}
 
 function pad(n: number, width: number): string {
 	const s = String(n);
@@ -19,8 +23,6 @@ function deltaStr(delta: number | null, colorize: boolean): string {
 	if (delta < 0) return ` [-] ${pct}`;
 	return "";
 }
-
-// ── Per-tool section ────────────────────────────────────────────────
 
 function renderToolSection(report: ToolCoverageReport, colorize: boolean): string {
 	const lines: string[] = [];
@@ -57,17 +59,23 @@ function renderToolSection(report: ToolCoverageReport, colorize: boolean): strin
 	return lines.join("\n");
 }
 
-// ── Full render ─────────────────────────────────────────────────────
-
 export function renderReport(
 	report: CoverageReport,
 	marker: string,
 	colorize: boolean,
+	commitInfo?: CommitInfo,
 ): string {
 	const parts: string[] = [];
 
 	parts.push(marker);
 	parts.push("## Coverage Report\n");
+
+	if (commitInfo) {
+		const short = commitInfo.sha.slice(0, 7);
+		const url =
+			`https://github.com/${commitInfo.owner}/${commitInfo.repo}/commit/${commitInfo.sha}`;
+		parts.push(`[Commit ${short}](${url})\n`);
+	}
 
 	for (const tool of report.tools) {
 		parts.push("```");
