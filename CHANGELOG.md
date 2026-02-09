@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/xseman/coverage/compare/v0.1.0...v0.2.0) (2026-02-09)
+
+
+### Features
+
+* support workflow_run trigger with automatic PR detection ([#5](https://github.com/xseman/coverage/issues/5)) ([fca0651](https://github.com/xseman/coverage/commit/fca0651823a9ac85b1f9db710a0648b2d7a5b2f8))
+
 ## 0.1.0 (2026-02-09)
 
 
