@@ -3,7 +3,7 @@ name: Release
 on:
     push:
         branches:
-            - main
+            - master
         paths:
             - "src/**"
             - "package.json"
@@ -54,4 +54,4 @@ jobs:
                   git config user.email "github-actions[bot]@users.noreply.github.com"
                   git add lib/index.mjs
                   git commit -m "build: update lib/index.mjs for ${{ needs.release-please.outputs.tag_name }}" || echo "No changes to commit"
-                  git push origin main
+                  git push origin master
