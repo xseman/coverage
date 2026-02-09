@@ -2,7 +2,7 @@
 	"name": "coverage",
 	"description": "GitHub Action: parse coverage, post sticky PR comment with deltas",
 	"type": "module",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"license": "Apache-2.0",
 	"funding": "https://github.com/sponsors/xseman",
 	"homepage": "https://github.com/xseman/coverage",
