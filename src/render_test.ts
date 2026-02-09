@@ -9,6 +9,7 @@ import {
 	buildToolReport,
 } from "./diff";
 import { renderReport } from "./render";
+import type { CommitInfo } from "./render";
 import type {
 	CoverageArtifact,
 	FileCoverage,
@@ -88,5 +89,33 @@ describe("renderReport", () => {
 		expect(md).toContain("Bun Coverage: 50.00%");
 		expect(md).toContain("Go Coverage: 80.00%");
 		expect(md).toContain("**Total Coverage: 65.00%**");
+	});
+
+	test("renders commit link when commitInfo is provided", () => {
+		const head: FileCoverage[] = [
+			{ file: "src/index.ts", coveredLines: 8, totalLines: 10, percent: 80 },
+		];
+		const toolReport = buildToolReport("bun", head, null, []);
+		const fullReport = buildFullReport([toolReport]);
+		const commitInfo: CommitInfo = {
+			sha: "abc1234567890",
+			owner: "myorg",
+			repo: "myrepo",
+		};
+		const md = renderReport(fullReport, "<!-- m -->", true, commitInfo);
+
+		expect(md).toContain("[Commit abc1234]");
+		expect(md).toContain("https://github.com/myorg/myrepo/commit/abc1234567890");
+	});
+
+	test("omits commit link when commitInfo is not provided", () => {
+		const head: FileCoverage[] = [
+			{ file: "src/index.ts", coveredLines: 8, totalLines: 10, percent: 80 },
+		];
+		const toolReport = buildToolReport("bun", head, null, []);
+		const fullReport = buildFullReport([toolReport]);
+		const md = renderReport(fullReport, "<!-- m -->", true);
+
+		expect(md).not.toContain("[Commit");
 	});
 });

@@ -12,6 +12,17 @@ inputs:
             Newline- or comma-separated list of coverage artifact paths.
             Each entry is `<tool>:<path>`, e.g. `bun:coverage/lcov.info` or `go:coverage.out`.
         required: true
+    pull-request-number:
+        description: >
+            PR number to comment on. Auto-detected from event context
+            when omitted. Use this when running under workflow_run
+            with fork PRs where auto-detection may fail.
+        required: false
+        default: ""
+    show-commit-link:
+        description: "Include a commit link at the top of the comment (on/off)."
+        required: false
+        default: "on"
     base-branch:
         description: "Target branch for comparison (e.g. main). Defaults to the PR base ref."
         required: false
