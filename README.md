@@ -31,14 +31,24 @@ multiple languages, and shows meaningful per-file diffs without external depende
 ## Usage
 
 ```yaml
-- uses: xseman/coverage
+- uses: xseman/coverage@v0.2.0
+  with:
+      coverage-artifact-paths: bun:coverage/lcov.info
+```
+
+With multiple tools and thresholds:
+
+```yaml
+- uses: xseman/coverage@v0.2.0
   with:
       coverage-artifact-paths: |
           bun:coverage/lcov.info
           go:coverage.out
+      fail-on-decrease: true
+      coverage-threshold: 80
 ```
 
-### Complete Example
+Full workflow:
 
 ```yaml
 name: Coverage
@@ -53,23 +63,42 @@ jobs:
             - run: bun install
             - run: bun test --coverage --coverage-reporter=lcov
 
-            - uses: xseman/coverage
+            - uses: xseman/coverage@v0.2.0
               with:
                   coverage-artifact-paths: bun:coverage/lcov.info
 ```
 
-### Multi-Tool Example
+## Output example
 
-```yaml
-- uses: xseman/coverage
-  with:
-      coverage-artifact-paths: |
-          bun:coverage/lcov.info
-          go:coverage.out
+![Output example](example.png)
 
-      fail-on-decrease: true
-      coverage-threshold: 80
+## How it works
+
+```mermaid
+---
+config:
+  theme: neutral
+  themeVariables:
+    fontFamily: monospace
+    fontSize: "10px"
+---
+sequenceDiagram
+    participant F as Filesystem
+    participant A as Action
+    participant C as Cache
+    participant G as GitHub
+
+    F->>A: read coverage file
+    A->>C: restore base coverage
+    A->>A: compute deltas
+    A->>G: post PR comment
+    A->>C: save new coverage
 ```
+
+Each `<tool>:<path>` entry goes through this pipeline independently. Results
+are combined into one PR comment. The action caches parsed coverage as JSON
+via `@actions/cache` using key `{prefix}-{tool}-{branch}-{sha}`, restoring
+by prefix match to find the latest base-branch snapshot.
 
 ## Inputs
 
@@ -78,15 +107,13 @@ jobs:
 | `coverage-artifact-paths` | _(required)_                        | Newline or comma-separated `<tool>:<path>` entries |
 | `base-branch`             | PR base ref                         | Branch for delta comparison                        |
 | `cache-key`               | `coverage-reporter`                 | Cache key prefix                                   |
-| `update-comment-marker`   | `<!-- coverage-reporter-sticky -->` | HTML comment marker for sticky comments            |
-| `colorize`                | `on`                                | Enable `[+]`/`[-]` delta markers (`on` or `off`)   |
+| `update-comment-marker`   | `<!-- coverage-reporter-sticky -->` | HTML marker for sticky comment                     |
+| `colorize`                | `on`                                | `[+]`/`[-]` delta markers (`on`/`off`)             |
 | `fail-on-decrease`        | `false`                             | Fail if coverage decreases                         |
 | `coverage-threshold`      | `0`                                 | Minimum overall coverage % (0 = disabled)          |
-| `github-token`            | `${{ github.token }}`               | Token for PR comments (automatically provided)     |
+| `github-token`            | `${{ github.token }}`               | Token for PR comments                              |
 
-### Supported Tools
-
-The `<tool>` prefix in `coverage-artifact-paths` selects the parser and labels the output:
+### Supported tools
 
 | Tool      | Format           | Example                   |
 | --------- | ---------------- | ------------------------- |
@@ -103,55 +130,27 @@ The `<tool>` prefix in `coverage-artifact-paths` selects the parser and labels t
 | `coverage-decreased` | `true` if any file coverage decreased       |
 | `comment-id`         | ID of created/updated PR comment            |
 
-## Generating Coverage Files
-
-### Bun (LCOV)
+## Generating coverage files
 
 ```bash
+# Bun (produces LCOV)
 bun test --coverage --coverage-reporter=lcov
-# Creates: coverage/lcov.info
-```
 
-### Go
-
-```bash
+# Go
 go test -coverprofile=coverage.out ./...
 ```
-
-For integration tests with `-cover` build flag:
-
-```bash
-go build -cover -o app .
-GOCOVERDIR=coverdata ./app
-go tool covdata textfmt -i=coverdata -o=coverage.out
-```
-
-## Output Format
-
-Coverage reports appear as sticky PR comments with monospace formatting:
-
-```
- 70.00% (49/70) src/api/client.ts     [-] -5.25%
- 63.33% (19/30) src/components/Button.tsx
- 96.00% (48/50) src/hooks/useAuth.ts     [+] +2.50%
-100.00% (45/45) src/store/index.ts
-
-Bun Coverage: 83.48% [-] -1.20%
-```
-
-Multi-tool reports show each tool's coverage block followed by an overall total.
 
 ## Development
 
 ```bash
-bun install    # Install dependencies
-bun test       # Run tests
-bun run lint   # Typecheck + format check
-bun run build  # Bundle to lib/index.mjs
+bun install    # install dependencies
+bun test       # run tests
+bun run lint   # typecheck + format check
+bun run build  # bundle to lib/index.mjs
 ```
 
 ## Related
 
-- [actions/cache](https://github.com/actions/cache) - GitHub Actions caching
-- [Bun test coverage](https://bun.sh/docs/cli/test#coverage) - Bun coverage documentation
-- [Go test coverage](https://go.dev/blog/cover) - Go coverage tools
+- [actions/cache](https://github.com/actions/cache)
+- [Bun test coverage](https://bun.sh/docs/cli/test#coverage)
+- [Go test coverage](https://go.dev/blog/cover)
