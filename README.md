@@ -28,6 +28,10 @@ multiple languages, and shows meaningful per-file diffs without external depende
 - Optional thresholds and fail-on-decrease
 - No external services or tokens required
 
+## Output example
+
+![Output example](example.png)
+
 ## Usage
 
 ```yaml
@@ -67,10 +71,6 @@ jobs:
               with:
                   coverage-artifact-paths: bun:coverage/lcov.info
 ```
-
-## Output example
-
-![Output example](example.png)
 
 ## How it works
 
