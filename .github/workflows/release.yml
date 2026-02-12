@@ -26,8 +26,41 @@ permissions:
     pull-requests: write
 
 jobs:
+    build:
+        name: Build and Commit Artifact
+        runs-on: ubuntu-latest
+        if: github.event_name == 'push'
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@v6
+              with:
+                  token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
+
+            - run: bun install --frozen-lockfile
+            - run: bun run build
+
+            - name: Commit built artifact
+              run: |
+                if git diff --quiet lib/index.js; then
+                    echo "No changes to lib/index.js"
+                    exit 0
+                fi
+                
+                git config user.name "github-actions[bot]"
+                git config user.email "github-actions[bot]@users.noreply.github.com"
+                git add lib/index.js
+                git commit -m "build: update lib/index.js"
+                git push origin master
+
     release-please:
         name: Release Please
+        needs: build
+        if: github.event_name == 'push'
         runs-on: ubuntu-latest
         outputs:
             release_created: ${{ steps.release.outputs.release_created }}
@@ -39,28 +72,3 @@ jobs:
                   token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
                   config-file: .github/.release-config.json
                   manifest-file: .github/.release-manifest.json
-
-    build:
-        name: Build
-        needs: release-please
-        if: ${{ (github.event_name == 'push' && needs.release-please.outputs.release_created) || (github.event_name == 'workflow_dispatch' && inputs.release == true) }}
-        runs-on: ubuntu-latest
-        permissions:
-            contents: write
-        steps:
-            - uses: actions/checkout@v6
-
-            - uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: latest
-
-            - run: bun install --frozen-lockfile
-            - run: bun run build
-
-            - name: Commit built artifact
-              run: |
-                  git config user.name "github-actions[bot]"
-                  git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git add lib/index.js
-                  git commit -m "build: update lib/index.js for ${{ github.event_name == 'push' && needs.release-please.outputs.tag_name || inputs.tag }}" || echo "No changes to commit"
-                  git push origin master
