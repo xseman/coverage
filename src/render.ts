@@ -5,6 +5,7 @@ import type {
 
 export interface CommitInfo {
 	sha: string;
+	baseSha?: string;
 	owner: string;
 	repo: string;
 }
@@ -59,6 +60,112 @@ function renderToolSection(report: ToolCoverageReport, colorize: boolean): strin
 	return lines.join("\n");
 }
 
+function renderCoverageDiff(report: CoverageReport): string | null {
+	const o = report.overall;
+	if (o.basePercent === null) return null;
+
+	const baseCovered = report.tools.reduce((s, t) => s + (t.summary.baseCoveredLines ?? 0), 0);
+	const baseTotal = report.tools.reduce((s, t) => s + (t.summary.baseTotalLines ?? 0), 0);
+	const headFiles = report.tools.reduce(
+		(s, t) => s + t.files.filter((f) => f.totalLines > 0).length,
+		0,
+	);
+	const baseFiles = report.tools.reduce(
+		(s, t) => s + t.files.filter((f) => (f.baseTotalLines ?? 0) > 0).length,
+		0,
+	);
+
+	function fmtDiff(head: number, base: number): string {
+		const d = head - base;
+		if (d === 0) return "";
+		return d > 0 ? `+${d}` : String(d);
+	}
+
+	function fmtPctDiff(d: number | null): string {
+		if (d === null || d === 0) return "";
+		return `${d > 0 ? "+" : ""}${d.toFixed(2)}%`;
+	}
+
+	const hitsDelta = o.coveredLines - baseCovered;
+
+	type RowData = { prefix: string; label: string; base: string; head: string; diff: string; };
+	const rows: (RowData | "sep")[] = [
+		{
+			prefix: " ",
+			label: "Coverage",
+			base: `${o.basePercent.toFixed(2)}%`,
+			head: `${o.percent.toFixed(2)}%`,
+			diff: fmtPctDiff(o.delta),
+		},
+		"sep",
+		{
+			prefix: " ",
+			label: "Files",
+			base: String(baseFiles),
+			head: String(headFiles),
+			diff: fmtDiff(headFiles, baseFiles),
+		},
+		{
+			prefix: " ",
+			label: "Lines",
+			base: String(baseTotal),
+			head: String(o.totalLines),
+			diff: fmtDiff(o.totalLines, baseTotal),
+		},
+		"sep",
+		{
+			prefix: hitsDelta > 0 ? "+" : hitsDelta < 0 ? "-" : " ",
+			label: "Hits",
+			base: String(baseCovered),
+			head: String(o.coveredLines),
+			diff: fmtDiff(o.coveredLines, baseCovered),
+		},
+	];
+
+	const actual = rows.filter((r): r is RowData => r !== "sep");
+	const lw = Math.max(...actual.map((r) => r.label.length));
+	const bw = Math.max(4, ...actual.map((r) => r.base.length));
+	const hw = Math.max(4, ...actual.map((r) => r.head.length));
+	const dw = Math.max(3, ...actual.map((r) => r.diff.length));
+
+	function fmtRow(r: RowData): string {
+		return `${r.prefix} ${r.label.padEnd(lw)}  ${r.base.padStart(bw)}  ${
+			r.head.padStart(hw)
+		}  ${r.diff.padStart(dw)}`;
+	}
+
+	const rowLen = fmtRow(actual[0]).length;
+	const w = Math.max(rowLen + 4, 40);
+
+	const sep = "=".repeat(w);
+
+	const title = "Coverage Diff";
+	const innerW = w - 4;
+	const tPad = innerW - title.length;
+	const tl = Math.floor(tPad / 2);
+	const tr = tPad - tl;
+
+	const colInner = `  ${" ".repeat(lw)}  ${"base".padStart(bw)}  ${"head".padStart(hw)}  ${
+		" +/-".padStart(dw)
+	}`;
+
+	const lines: string[] = [
+		`@@${" ".repeat(tl)}${title}${" ".repeat(tr)}@@`,
+		`##${colInner.padEnd(innerW)}##`,
+	];
+
+	for (const row of rows) {
+		if (row === "sep") {
+			lines.push(sep);
+		} else {
+			lines.push(fmtRow(row));
+		}
+	}
+	lines.push(sep);
+
+	return lines.join("\n");
+}
+
 export function renderReport(
 	report: CoverageReport,
 	marker: string,
@@ -70,11 +177,33 @@ export function renderReport(
 	parts.push(marker);
 	parts.push("## Coverage Report\n");
 
-	if (commitInfo) {
-		const short = commitInfo.sha.slice(0, 7);
-		const url =
+	// Project coverage summary line
+	const pct = report.overall.percent.toFixed(2);
+	if (commitInfo?.baseSha) {
+		const headShort = commitInfo.sha.slice(0, 7);
+		const headUrl =
 			`https://github.com/${commitInfo.owner}/${commitInfo.repo}/commit/${commitInfo.sha}`;
-		parts.push(`[Commit ${short}](${url})\n`);
+		const baseShort = commitInfo.baseSha.slice(0, 7);
+		const baseUrl =
+			`https://github.com/${commitInfo.owner}/${commitInfo.repo}/commit/${commitInfo.baseSha}`;
+		parts.push(
+			`Project coverage is ${pct}%. Comparing base ([\`${baseShort}\`](${baseUrl})) to head ([\`${headShort}\`](${headUrl})).\n`,
+		);
+	} else if (commitInfo) {
+		const headShort = commitInfo.sha.slice(0, 7);
+		const headUrl =
+			`https://github.com/${commitInfo.owner}/${commitInfo.repo}/commit/${commitInfo.sha}`;
+		parts.push(`Project coverage is ${pct}%. Commit [\`${headShort}\`](${headUrl}).\n`);
+	} else {
+		parts.push(`Project coverage is ${pct}%.\n`);
+	}
+
+	// Coverage Diff table (only when base data is available)
+	const diffTable = renderCoverageDiff(report);
+	if (diffTable) {
+		parts.push("```diff");
+		parts.push(diffTable);
+		parts.push("```\n");
 	}
 
 	for (const tool of report.tools) {

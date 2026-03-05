@@ -119,6 +119,7 @@ async function run(): Promise<void> {
 		// Process each tool
 		const toolReports = [];
 		let anyDecrease = false;
+		let baseSha: string | undefined;
 
 		for (const input of inputs) {
 			core.info(`Processing ${input.tool} coverage from ${input.path}`);
@@ -132,6 +133,10 @@ async function run(): Promise<void> {
 				baseArtifact = await restoreBaseArtifact(input.tool, cacheKeyPrefix, baseBranch);
 			} catch {
 				core.warning(`Could not restore base artifact for ${input.tool}`);
+			}
+
+			if (baseArtifact && !baseSha) {
+				baseSha = baseArtifact.commitSha;
 			}
 
 			const report = buildToolReport(input.tool, headFiles, baseArtifact, warnings);
@@ -163,7 +168,7 @@ async function run(): Promise<void> {
 
 		// Render markdown
 		const { owner, repo } = github.context.repo;
-		const commitInfo = showCommitLink ? { sha: commitSha, owner, repo } : undefined;
+		const commitInfo = showCommitLink ? { sha: commitSha, baseSha, owner, repo } : undefined;
 		const markdown = renderReport(fullReport, marker, colorize, commitInfo);
 
 		// Set outputs
