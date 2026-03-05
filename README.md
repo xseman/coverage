@@ -21,7 +21,7 @@ multiple languages, and shows meaningful per-file diffs without external depende
 
 ## Features
 
-- Supports any LCOV-producing tool (Bun, Jest, c8, nyc, Istanbul, PHPUnit, …) and Go coverage
+- Supports any LCOV-producing tool (Bun, Node.js, Jest, c8, nyc, Istanbul, PHPUnit, …) and Go coverage
 - Shows per-file coverage deltas against base branch
 - Single sticky PR comment (updates existing, no spam)
 - Uses `@actions/cache` for cross-run comparison
@@ -118,6 +118,7 @@ by prefix match to find the latest base-branch snapshot.
 | Tool      | Format           | Example                   |
 | --------- | ---------------- | ------------------------- |
 | `bun`     | LCOV             | `bun:coverage/lcov.info`  |
+| `node`    | LCOV             | `node:coverage/lcov.info` |
 | `lcov`    | LCOV (generic)   | `lcov:coverage/lcov.info` |
 | `go`      | Go cover profile | `go:coverage.out`         |
 | `gocover` | Go cover profile | `gocover:coverage.out`    |
@@ -136,6 +137,12 @@ by prefix match to find the latest base-branch snapshot.
 # Bun (produces LCOV)
 bun test --coverage --coverage-reporter=lcov
 
+# Node.js (produces LCOV)
+node --test \
+  --experimental-test-coverage \
+  --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \
+  --test-reporter=spec --test-reporter-destination=stdout
+
 # Go
 go test -coverprofile=coverage.out ./...
 ```
@@ -151,6 +158,8 @@ bun run build  # bundle to lib/index.mjs
 
 ## Related
 
-- [actions/cache](https://github.com/actions/cache)
+- [@actions/cache](https://github.com/actions/cache)
+- [@actions/core](https://github.com/actions/core)
+- [@actions/github](https://github.com/actions/github)
 - [Bun test coverage](https://bun.sh/docs/cli/test#coverage)
 - [Go test coverage](https://go.dev/blog/cover)

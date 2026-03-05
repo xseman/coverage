@@ -1,5 +1,5 @@
 name: "Coverage"
-description: "Parse Bun (LCOV) and Go coverage, compute per-file deltas, and post a sticky PR comment with monospace coverage output."
+description: "Parse LCOV (Bun, Node.js, Jest, etc.) and Go coverage, compute per-file deltas, and post a sticky PR comment with monospace coverage output."
 author: "xseman"
 
 branding:
@@ -10,7 +10,7 @@ inputs:
     coverage-artifact-paths:
         description: >
             Newline- or comma-separated list of coverage artifact paths.
-            Each entry is `<tool>:<path>`, e.g. `bun:coverage/lcov.info` or `go:coverage.out`.
+            Each entry is `<tool>:<path>`, e.g. `bun:coverage/lcov.info`, `node:coverage/lcov.info`, or `go:coverage.out`.
         required: true
     pull-request-number:
         description: >
