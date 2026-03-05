@@ -46,16 +46,16 @@ jobs:
 
             - name: Commit built artifact
               run: |
-                if git diff --quiet lib/index.js; then
-                    echo "No changes to lib/index.js"
-                    exit 0
-                fi
-                
-                git config user.name "github-actions[bot]"
-                git config user.email "github-actions[bot]@users.noreply.github.com"
-                git add lib/index.js
-                git commit -m "build: update lib/index.js"
-                git push origin master
+                  if git diff --quiet lib/index.js; then
+                      echo "No changes to lib/index.js"
+                      exit 0
+                  fi
+
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git add lib/index.js
+                  git commit -m "build: update lib/index.js"
+                  git push origin master
 
     release-please:
         name: Release Please

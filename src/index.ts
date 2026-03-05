@@ -70,14 +70,15 @@ function parseFile(tool: string, filePath: string): { files: FileCoverage[]; war
 
 	try {
 		switch (tool) {
-			case "bun":
 			case "lcov":
+			case "bun":
+			case "node":
 				return { files: parseLcov(content), warnings };
 			case "go":
 			case "gocover":
 				return { files: parseGoCover(content), warnings };
 			default:
-				warnings.push(`Unknown tool "${tool}". Supported: bun, lcov, go, gocover.`);
+				warnings.push(`Unknown tool "${tool}". Supported: bun, lcov, node, go, gocover.`);
 				return { files: [], warnings };
 		}
 	} catch (err: unknown) {
