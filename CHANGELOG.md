@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/xseman/coverage/compare/v0.2.0...v0.3.0) (2026-03-05)
+
+
+### Features
+
+* add node LCOV support and generated integration fixtures ([#7](https://github.com/xseman/coverage/issues/7)) ([1c99209](https://github.com/xseman/coverage/commit/1c99209306620fdbc8cef2b0350d571fb18b985e))
+* **render:** add project coverage summary and base-head diff table ([#9](https://github.com/xseman/coverage/issues/9)) ([ba09ad5](https://github.com/xseman/coverage/commit/ba09ad54a0d39434baca665b0697101dcdc17e7a))
+
+
+### Documentation
+
+* move output example section ([38e86b0](https://github.com/xseman/coverage/commit/38e86b0edc2e984d21ad1eb2c55e4e9b65e360d8))
+* update usage examples and add output illustration ([3c094cd](https://github.com/xseman/coverage/commit/3c094cd85eade4e0ffb8c4fadddef6d482d11b72))
+
+
+### Build System
+
+* update lib/index.js ([e55192b](https://github.com/xseman/coverage/commit/e55192bcc1ea882a94694e14c58385891f110510))
+* update lib/index.js ([e0b0f59](https://github.com/xseman/coverage/commit/e0b0f59ab8bb6c7a0d6d119e48ab6a52dc986eba))
+* update lib/index.js for v0.2.0 ([1f45782](https://github.com/xseman/coverage/commit/1f4578203b12badd125ff055bc7ea52c46e31975))
+
+
+### Maintenance
+
+* artifact build commit before release ([8fcc3d9](https://github.com/xseman/coverage/commit/8fcc3d9d22e5720a9756b6e9ea79edd5dfcff3b6))
+
 ## [0.2.0](https://github.com/xseman/coverage/compare/v0.1.0...v0.2.0) (2026-02-09)
 
 
