@@ -77,12 +77,13 @@ function renderCoverageDiff(report: CoverageReport): string | null {
 
 	function fmtDiff(head: number, base: number): string {
 		const d = head - base;
-		if (d === 0) return "";
+		if (d === 0) return "0";
 		return d > 0 ? `+${d}` : String(d);
 	}
 
 	function fmtPctDiff(d: number | null): string {
-		if (d === null || d === 0) return "";
+		if (d === null) return "";
+		if (d === 0) return "0.00%";
 		return `${d > 0 ? "+" : ""}${d.toFixed(2)}%`;
 	}
 
@@ -124,14 +125,28 @@ function renderCoverageDiff(report: CoverageReport): string | null {
 
 	const actual = rows.filter((r): r is RowData => r !== "sep");
 	const lw = Math.max(...actual.map((r) => r.label.length));
-	const bw = Math.max(4, ...actual.map((r) => r.base.length));
-	const hw = Math.max(4, ...actual.map((r) => r.head.length));
-	const dw = Math.max(3, ...actual.map((r) => r.diff.length));
+	const bw = Math.max("base".length, ...actual.map((r) => r.base.length));
+	const hw = Math.max("head".length, ...actual.map((r) => r.head.length));
+	const dw = Math.max("+/-".length, ...actual.map((r) => r.diff.length));
+
+	function fmtColumns(
+		prefix: string,
+		label: string,
+		base: string,
+		head: string,
+		diff: string,
+	): string {
+		return `${prefix} ${label.padEnd(lw)}  ${base.padStart(bw)}  ${head.padStart(hw)}  ${
+			diff.padStart(dw)
+		}`;
+	}
 
 	function fmtRow(r: RowData): string {
-		return `${r.prefix} ${r.label.padEnd(lw)}  ${r.base.padStart(bw)}  ${
-			r.head.padStart(hw)
-		}  ${r.diff.padStart(dw)}`;
+		return fmtColumns(r.prefix, r.label, r.base, r.head, r.diff);
+	}
+
+	function fmtHeaderColumns(base: string, head: string, diff: string): string {
+		return `  ${"".padEnd(lw)}  ${base.padEnd(bw)}  ${head.padEnd(hw)}  ${diff.padEnd(dw)}`;
 	}
 
 	const rowLen = fmtRow(actual[0]).length;
@@ -145,9 +160,7 @@ function renderCoverageDiff(report: CoverageReport): string | null {
 	const tl = Math.floor(tPad / 2);
 	const tr = tPad - tl;
 
-	const colInner = `  ${" ".repeat(lw)}  ${"base".padStart(bw)}  ${"head".padStart(hw)}  ${
-		" +/-".padStart(dw)
-	}`;
+	const colInner = fmtHeaderColumns("base", "head", "+/-");
 
 	const lines: string[] = [
 		`@@${" ".repeat(tl)}${title}${" ".repeat(tr)}@@`,
