@@ -243,4 +243,64 @@ describe("renderReport", () => {
 		const hitsLine = diffBlock.split("\n").find((l) => l.includes("Hits"))!;
 		expect(hitsLine.startsWith("-")).toBe(true);
 	});
+
+	test("coverage diff table renders unchanged values explicitly", () => {
+		const head: FileCoverage[] = [
+			{ file: "a.ts", coveredLines: 7, totalLines: 10, percent: 70 },
+			{ file: "b.ts", coveredLines: 9, totalLines: 10, percent: 90 },
+		];
+
+		const base: CoverageArtifact = {
+			tool: "bun",
+			files: [
+				{ file: "a.ts", coveredLines: 7, totalLines: 10, percent: 70 },
+				{ file: "b.ts", coveredLines: 9, totalLines: 10, percent: 90 },
+			],
+			commitSha: "abc",
+			branch: "main",
+			timestamp: "2025-01-01T00:00:00Z",
+		};
+
+		const toolReport = buildToolReport("bun", head, base, []);
+		const fullReport = buildFullReport([toolReport]);
+		const md = renderReport(fullReport, "<!-- m -->", true);
+
+		const diffBlock = md.split("```diff")[1].split("```")[0];
+		expect(diffBlock).toContain("0.00%");
+		expect(diffBlock).toContain("Files");
+		expect(diffBlock).toContain("Lines");
+		expect(diffBlock).toContain("Hits");
+		expect(diffBlock).toMatch(/Files\s+2\s+2\s+0/);
+		expect(diffBlock).toMatch(/Lines\s+20\s+20\s+0/);
+		expect(diffBlock).toMatch(/Hits\s+16\s+16\s+0/);
+	});
+
+	test("coverage diff table header columns align with data columns", () => {
+		const head: FileCoverage[] = [
+			{ file: "src/index.ts", coveredLines: 8, totalLines: 10, percent: 80 },
+			{ file: "src/utils.ts", coveredLines: 10, totalLines: 10, percent: 100 },
+		];
+		const base: CoverageArtifact = {
+			tool: "bun",
+			files: [
+				{ file: "src/index.ts", coveredLines: 7, totalLines: 10, percent: 70 },
+				{ file: "src/utils.ts", coveredLines: 9, totalLines: 10, percent: 90 },
+			],
+			commitSha: "abc",
+			branch: "main",
+			timestamp: "2025-01-01T00:00:00Z",
+		};
+
+		const toolReport = buildToolReport("bun", head, base, []);
+		const fullReport = buildFullReport([toolReport]);
+		const md = renderReport(fullReport, "<!-- m -->", true);
+		const diffBlock = md.split("```diff")[1].split("```")[0];
+		const lines = diffBlock.trim().split("\n");
+		const headerLine = lines[1].slice(2, -2);
+		const coverageLine = lines[2];
+
+		expect(headerLine.indexOf("base")).toBe(coverageLine.indexOf("80.00%"));
+		expect(headerLine.indexOf("head")).toBe(coverageLine.indexOf("90.00%"));
+		expect(headerLine.indexOf("+/-")).toBe(coverageLine.indexOf("+10.00%"));
+	});
 });
