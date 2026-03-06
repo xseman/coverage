@@ -23,9 +23,9 @@
 		"fmt": "dprint fmt",
 		"fmt:check": "dprint check",
 		"typecheck": "tsc --noEmit",
-		"test": "bun test",
-		"test:watch": "bun test --watch",
-		"test:coverage": "bun test --coverage",
+		"test": "bun test --concurrent",
+		"test:watch": "bun test --watch --concurrent",
+		"test:coverage": "bun test --coverage --concurrent",
 		"lint": "bun run typecheck && bun run fmt:check"
 	},
 	"dependencies": {

@@ -103,6 +103,33 @@ describe("renderReport", () => {
 		expect(md).toContain("**Total Coverage: 65.00%**");
 	});
 
+	test("omits diff table when overall baseline is incomplete", () => {
+		const withBase = buildToolReport(
+			"bun",
+			[{ file: "a.ts", coveredLines: 8, totalLines: 10, percent: 80 }],
+			{
+				tool: "bun",
+				files: [{ file: "a.ts", coveredLines: 7, totalLines: 10, percent: 70 }],
+				commitSha: "abc123",
+				branch: "main",
+				timestamp: "2025-01-01T00:00:00Z",
+			},
+			[],
+		);
+		const withoutBase = buildToolReport(
+			"go",
+			[{ file: "b.go", coveredLines: 8, totalLines: 10, percent: 80 }],
+			null,
+			[],
+		);
+		const fullReport = buildFullReport([withBase, withoutBase]);
+		const md = renderReport(fullReport, "<!-- m -->", true);
+
+		expect(md).not.toContain("Coverage Diff");
+		expect(md).toContain("Bun Coverage: 80.00% [+] +10.00%");
+		expect(md).toContain("Go Coverage: 80.00%");
+	});
+
 	test("renders project coverage with base and head commit links", () => {
 		const head: FileCoverage[] = [
 			{ file: "src/index.ts", coveredLines: 8, totalLines: 10, percent: 80 },
@@ -211,7 +238,7 @@ describe("renderReport", () => {
 			branch: "main",
 			timestamp: "2025-01-01T00:00:00Z",
 		};
-		
+
 		const toolReport = buildToolReport("bun", head, base, []);
 		const fullReport = buildFullReport([toolReport]);
 		const md = renderReport(fullReport, "<!-- m -->", true);
@@ -234,7 +261,7 @@ describe("renderReport", () => {
 			branch: "main",
 			timestamp: "2025-01-01T00:00:00Z",
 		};
-		
+
 		const toolReport = buildToolReport("bun", head, base, []);
 		const fullReport = buildFullReport([toolReport]);
 		const md = renderReport(fullReport, "<!-- m -->", true);

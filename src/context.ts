@@ -2,6 +2,14 @@ import * as github from "@actions/github";
 
 type Context = typeof github.context;
 
+function isPrEvent(context: Context): boolean {
+	return context.eventName === "pull_request" || context.eventName === "pull_request_target";
+}
+
+function stripRefsPrefix(ref: string): string {
+	return ref.replace("refs/heads/", "");
+}
+
 /**
  * Resolve the PR number from the event context using a priority chain:
  *
@@ -24,7 +32,7 @@ export async function resolvePrNumber(
 	}
 
 	// 2. Direct PR trigger
-	if (context.eventName === "pull_request" || context.eventName === "pull_request_target") {
+	if (isPrEvent(context)) {
 		const num = context.payload.pull_request?.number;
 		if (typeof num === "number") return num;
 	}
@@ -83,8 +91,8 @@ export function resolveHeadSha(context: Context = github.context): string {
  * Resolve the base branch for cache key scoping.
  *
  * Under `workflow_run`, `context.ref` points to the *default* branch, not the
- * PR base. Use `head_branch` from the triggering run instead. Falls back to the
- * explicit `base-branch` input or `main`.
+ * PR base. Prefer the base ref of the triggering PR when it is available.
+ * Falls back to the explicit `base-branch` input or the current ref.
  */
 export function resolveBaseBranch(
 	inputBaseBranch: string,
@@ -92,15 +100,21 @@ export function resolveBaseBranch(
 ): string {
 	if (inputBaseBranch) return inputBaseBranch;
 
-	if (context.eventName === "pull_request" || context.eventName === "pull_request_target") {
+	if (isPrEvent(context)) {
 		return context.payload.pull_request?.base?.ref ?? "main";
 	}
 
 	if (context.eventName === "workflow_run") {
-		return context.payload.workflow_run?.head_branch ?? "main";
+		const prs: unknown[] | undefined = context.payload.workflow_run?.pull_requests;
+		if (Array.isArray(prs) && prs.length > 0) {
+			const first = prs[0] as { base?: { ref?: string; }; };
+			if (first.base?.ref) return first.base.ref;
+		}
+
+		return stripRefsPrefix(context.ref) || "main";
 	}
 
-	return context.ref.replace("refs/heads/", "") || "main";
+	return stripRefsPrefix(context.ref) || "main";
 }
 
 /**
@@ -109,15 +123,15 @@ export function resolveBaseBranch(
  * Under `workflow_run`, the head branch comes from the triggering workflow.
  */
 export function resolveCurrentBranch(context: Context = github.context): string {
-	if (context.eventName === "pull_request" || context.eventName === "pull_request_target") {
+	if (isPrEvent(context)) {
 		return context.payload.pull_request?.head?.ref
-			?? context.ref.replace("refs/heads/", "");
+			?? stripRefsPrefix(context.ref);
 	}
 
 	if (context.eventName === "workflow_run") {
 		return context.payload.workflow_run?.head_branch
-			?? context.ref.replace("refs/heads/", "");
+			?? stripRefsPrefix(context.ref);
 	}
 
-	return context.ref.replace("refs/heads/", "");
+	return stripRefsPrefix(context.ref);
 }

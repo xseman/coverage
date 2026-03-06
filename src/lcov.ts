@@ -1,3 +1,4 @@
+import { calculatePercent } from "./percent.js";
 import type { FileCoverage } from "./types.js";
 
 /**
@@ -62,9 +63,7 @@ export function parseLcov(content: string): FileCoverage[] {
 			coveredLines = lhProvided ?? 0;
 		}
 
-		const percent = totalLines > 0
-			? Math.round((coveredLines / totalLines) * 10000) / 100
-			: 100;
+		const percent = calculatePercent(coveredLines, totalLines);
 
 		results.push({ file, coveredLines, totalLines, percent });
 	}

@@ -124,4 +124,30 @@ describe("buildFullReport", () => {
 		expect(report.overall.percent).toBe(65);
 		expect(report.tools).toHaveLength(2);
 	});
+
+	test("omits overall delta when any tool lacks base data", () => {
+		const withBase = buildToolReport(
+			"bun",
+			[{ file: "a.ts", coveredLines: 8, totalLines: 10, percent: 80 }],
+			{
+				tool: "bun",
+				files: [{ file: "a.ts", coveredLines: 7, totalLines: 10, percent: 70 }],
+				commitSha: "abc123",
+				branch: "main",
+				timestamp: "2025-01-01T00:00:00Z",
+			},
+			[],
+		);
+		const withoutBase = buildToolReport(
+			"go",
+			[{ file: "b.go", coveredLines: 8, totalLines: 10, percent: 80 }],
+			null,
+			[],
+		);
+
+		const report = buildFullReport([withBase, withoutBase]);
+
+		expect(report.overall.basePercent).toBeNull();
+		expect(report.overall.delta).toBeNull();
+	});
 });

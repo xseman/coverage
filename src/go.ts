@@ -1,3 +1,4 @@
+import { calculatePercent } from "./percent.js";
 import type { FileCoverage } from "./types.js";
 
 /**
@@ -59,7 +60,7 @@ export function parseGoCover(content: string): FileCoverage[] {
 
 	const results: FileCoverage[] = [];
 	for (const [file, { covered, total }] of fileMap) {
-		const percent = total > 0 ? Math.round((covered / total) * 10000) / 100 : 100;
+		const percent = calculatePercent(covered, total);
 		results.push({ file, coveredLines: covered, totalLines: total, percent });
 	}
 
