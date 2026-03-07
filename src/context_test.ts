@@ -116,7 +116,6 @@ describe("resolveHeadSha", () => {
 	test("returns workflow_run.head_sha for workflow_run event", () => {
 		const ctx = makeContext({
 			eventName: "workflow_run",
-			sha: "default-sha",
 			payload: { workflow_run: { head_sha: "wr-sha-456" } },
 		});
 		expect(resolveHeadSha(ctx)).toBe("wr-sha-456");
@@ -171,10 +170,15 @@ describe("resolveBaseBranch", () => {
 		expect(resolveBaseBranch("", ctx)).toBe("develop");
 	});
 
-	test("returns workflow_run.head_branch for workflow_run event", () => {
+	test("returns workflow_run pull request base ref for workflow_run event", () => {
 		const ctx = makeContext({
 			eventName: "workflow_run",
-			payload: { workflow_run: { head_branch: "wr-base" } },
+			payload: {
+				workflow_run: {
+					head_branch: "feature-branch",
+					pull_requests: [{ base: { ref: "wr-base" } }],
+				},
+			},
 		});
 		expect(resolveBaseBranch("", ctx)).toBe("wr-base");
 	});
@@ -184,12 +188,13 @@ describe("resolveBaseBranch", () => {
 		expect(resolveBaseBranch("", ctx)).toBe("main");
 	});
 
-	test("returns main when workflow_run has no head_branch", () => {
+	test("falls back to current ref when workflow_run has no PR base ref", () => {
 		const ctx = makeContext({
 			eventName: "workflow_run",
+			ref: "refs/heads/default-branch",
 			payload: { workflow_run: {} },
 		});
-		expect(resolveBaseBranch("", ctx)).toBe("main");
+		expect(resolveBaseBranch("", ctx)).toBe("default-branch");
 	});
 
 	test("input override takes precedence over PR payload", () => {

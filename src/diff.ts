@@ -1,3 +1,7 @@
+import {
+	calculatePercent,
+	roundDelta,
+} from "./percent.js";
 import type {
 	CoverageArtifact,
 	CoverageReport,
@@ -29,7 +33,7 @@ export function computeFileDiffs(
 			baseCoveredLines: base?.coveredLines ?? null,
 			baseTotalLines: base?.totalLines ?? null,
 			basePercent: base?.percent ?? null,
-			delta: base ? Math.round((head.percent - base.percent) * 100) / 100 : null,
+			delta: base ? roundDelta(head.percent, base.percent) : null,
 		});
 	}
 
@@ -70,7 +74,7 @@ export function buildToolReport(
 
 	const coveredLines = headFiles.reduce((s, f) => s + f.coveredLines, 0);
 	const totalLines = headFiles.reduce((s, f) => s + f.totalLines, 0);
-	const percent = totalLines > 0 ? Math.round((coveredLines / totalLines) * 10000) / 100 : 100;
+	const percent = calculatePercent(coveredLines, totalLines);
 
 	let baseCoveredLines: number | null = null;
 	let baseTotalLines: number | null = null;
@@ -80,10 +84,8 @@ export function buildToolReport(
 	if (baseFiles && baseFiles.length > 0) {
 		baseCoveredLines = baseFiles.reduce((s, f) => s + f.coveredLines, 0);
 		baseTotalLines = baseFiles.reduce((s, f) => s + f.totalLines, 0);
-		basePercent = baseTotalLines > 0
-			? Math.round((baseCoveredLines / baseTotalLines) * 10000) / 100
-			: 100;
-		delta = Math.round((percent - basePercent) * 100) / 100;
+		basePercent = calculatePercent(baseCoveredLines, baseTotalLines);
+		delta = roundDelta(percent, basePercent);
 	}
 
 	return {
@@ -108,15 +110,16 @@ export function buildToolReport(
 export function buildFullReport(toolReports: ToolCoverageReport[]): CoverageReport {
 	const coveredLines = toolReports.reduce((s, t) => s + t.summary.coveredLines, 0);
 	const totalLines = toolReports.reduce((s, t) => s + t.summary.totalLines, 0);
-	const percent = totalLines > 0 ? Math.round((coveredLines / totalLines) * 10000) / 100 : 100;
+	const percent = calculatePercent(coveredLines, totalLines);
 
 	let basePercent: number | null = null;
 	let delta: number | null = null;
+	const allToolsComparable = toolReports.every((t) => t.summary.baseTotalLines !== null);
 	const baseCovered = toolReports.reduce((s, t) => s + (t.summary.baseCoveredLines ?? 0), 0);
 	const baseTotal = toolReports.reduce((s, t) => s + (t.summary.baseTotalLines ?? 0), 0);
-	if (baseTotal > 0) {
-		basePercent = Math.round((baseCovered / baseTotal) * 10000) / 100;
-		delta = Math.round((percent - basePercent) * 100) / 100;
+	if (allToolsComparable && baseTotal > 0) {
+		basePercent = calculatePercent(baseCovered, baseTotal);
+		delta = roundDelta(percent, basePercent);
 	}
 
 	return {

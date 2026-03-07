@@ -1,3 +1,7 @@
+import {
+	formatPercent,
+	formatPercentValue,
+} from "./percent.js";
 import type {
 	CoverageReport,
 	ToolCoverageReport,
@@ -10,6 +14,13 @@ export interface CommitInfo {
 	repo: string;
 }
 
+function commitLink(info: CommitInfo, sha: string): { short: string; url: string; } {
+	return {
+		short: sha.slice(0, 7),
+		url: `https://github.com/${info.owner}/${info.repo}/commit/${sha}`,
+	};
+}
+
 function pad(n: number, width: number): string {
 	const s = String(n);
 	return " ".repeat(Math.max(0, width - s.length)) + s;
@@ -18,7 +29,7 @@ function pad(n: number, width: number): string {
 function deltaStr(delta: number | null, colorize: boolean): string {
 	if (delta === null) return "";
 	const sign = delta >= 0 ? "+" : "";
-	const pct = `${sign}${delta.toFixed(2)}%`;
+	const pct = `${sign}${formatPercent(delta)}`;
 	if (!colorize) return ` (${pct})`;
 	if (delta > 0) return ` [+] ${pct}`;
 	if (delta < 0) return ` [-] ${pct}`;
@@ -44,7 +55,7 @@ function renderToolSection(report: ToolCoverageReport, colorize: boolean): strin
 	const maxTotal = Math.max(...report.files.map((f) => String(f.totalLines).length), 1);
 
 	for (const f of report.files) {
-		const pct = `${f.percent.toFixed(2)}%`.padStart(7);
+		const pct = formatPercent(f.percent).padStart(7);
 		const covered = pad(f.coveredLines, maxCovered);
 		const total = pad(f.totalLines, maxTotal);
 		const delta = deltaStr(f.delta, colorize);
@@ -55,7 +66,7 @@ function renderToolSection(report: ToolCoverageReport, colorize: boolean): strin
 	const totalDelta = deltaStr(s.delta, colorize);
 
 	lines.push("");
-	lines.push(`${toolLabel} Coverage: ${s.percent.toFixed(2)}%${totalDelta}`);
+	lines.push(`${toolLabel} Coverage: ${formatPercent(s.percent)}${totalDelta}`);
 
 	return lines.join("\n");
 }
@@ -83,8 +94,8 @@ function renderCoverageDiff(report: CoverageReport): string | null {
 
 	function fmtPctDiff(d: number | null): string {
 		if (d === null) return "";
-		if (d === 0) return "0.00%";
-		return `${d > 0 ? "+" : ""}${d.toFixed(2)}%`;
+		if (d === 0) return formatPercent(d);
+		return `${d > 0 ? "+" : ""}${formatPercent(d)}`;
 	}
 
 	const hitsDelta = o.coveredLines - baseCovered;
@@ -94,8 +105,8 @@ function renderCoverageDiff(report: CoverageReport): string | null {
 		{
 			prefix: " ",
 			label: "Coverage",
-			base: `${o.basePercent.toFixed(2)}%`,
-			head: `${o.percent.toFixed(2)}%`,
+			base: formatPercent(o.basePercent),
+			head: formatPercent(o.percent),
 			diff: fmtPctDiff(o.delta),
 		},
 		"sep",
@@ -136,9 +147,7 @@ function renderCoverageDiff(report: CoverageReport): string | null {
 		head: string,
 		diff: string,
 	): string {
-		return `${prefix} ${label.padEnd(lw)}  ${base.padStart(bw)}  ${head.padStart(hw)}  ${
-			diff.padStart(dw)
-		}`;
+		return `${prefix} ${label.padEnd(lw)}  ${base.padStart(bw)}  ${head.padStart(hw)}  ${diff.padStart(dw)}`;
 	}
 
 	function fmtRow(r: RowData): string {
@@ -191,22 +200,16 @@ export function renderReport(
 	parts.push("## Coverage Report\n");
 
 	// Project coverage summary line
-	const pct = report.overall.percent.toFixed(2);
+	const pct = formatPercentValue(report.overall.percent);
 	if (commitInfo?.baseSha) {
-		const headShort = commitInfo.sha.slice(0, 7);
-		const headUrl =
-			`https://github.com/${commitInfo.owner}/${commitInfo.repo}/commit/${commitInfo.sha}`;
-		const baseShort = commitInfo.baseSha.slice(0, 7);
-		const baseUrl =
-			`https://github.com/${commitInfo.owner}/${commitInfo.repo}/commit/${commitInfo.baseSha}`;
+		const head = commitLink(commitInfo, commitInfo.sha);
+		const base = commitLink(commitInfo, commitInfo.baseSha);
 		parts.push(
-			`Project coverage is ${pct}%. Comparing base ([\`${baseShort}\`](${baseUrl})) to head ([\`${headShort}\`](${headUrl})).\n`,
+			`Project coverage is ${pct}%. Comparing base ([\`${base.short}\`](${base.url})) to head ([\`${head.short}\`](${head.url})).\n`,
 		);
 	} else if (commitInfo) {
-		const headShort = commitInfo.sha.slice(0, 7);
-		const headUrl =
-			`https://github.com/${commitInfo.owner}/${commitInfo.repo}/commit/${commitInfo.sha}`;
-		parts.push(`Project coverage is ${pct}%. Commit [\`${headShort}\`](${headUrl}).\n`);
+		const head = commitLink(commitInfo, commitInfo.sha);
+		parts.push(`Project coverage is ${pct}%. Commit [\`${head.short}\`](${head.url}).\n`);
 	} else {
 		parts.push(`Project coverage is ${pct}%.\n`);
 	}
@@ -229,7 +232,7 @@ export function renderReport(
 	if (report.tools.length > 1) {
 		const o = report.overall;
 		const totalDelta = deltaStr(o.delta, colorize);
-		parts.push(`**Total Coverage: ${o.percent.toFixed(2)}%${totalDelta}**\n`);
+		parts.push(`**Total Coverage: ${formatPercent(o.percent)}${totalDelta}**\n`);
 	}
 
 	parts.push("---");

@@ -20,8 +20,14 @@ import {
 	buildFullReport,
 	buildToolReport,
 } from "./diff.js";
-import { parseGoCover } from "./go.js";
-import { parseLcov } from "./lcov.js";
+import {
+	getCoverageParser,
+	getSupportedCoverageTools,
+} from "./parser.js";
+import {
+	formatPercent,
+	formatPercentValue,
+} from "./percent.js";
 import { renderReport } from "./render.js";
 import type {
 	ArtifactInput,
@@ -69,18 +75,19 @@ function parseFile(tool: string, filePath: string): { files: FileCoverage[]; war
 	}
 
 	try {
-		switch (tool) {
-			case "lcov":
-			case "bun":
-			case "node":
-				return { files: parseLcov(content), warnings };
-			case "go":
-			case "gocover":
-				return { files: parseGoCover(content), warnings };
-			default:
-				warnings.push(`Unknown tool "${tool}". Supported: bun, lcov, node, go, gocover.`);
-				return { files: [], warnings };
+		const parser = getCoverageParser(tool);
+		if (!parser) {
+			warnings.push(`Unknown tool "${tool}". Supported: ${getSupportedCoverageTools().join(", ")}.`);
+			return {
+				files: [],
+				warnings,
+			};
 		}
+
+		return {
+			files: parser(content),
+			warnings,
+		};
 	} catch (err: unknown) {
 		warnings.push(
 			`Failed to parse \`${filePath}\` as ${tool} coverage: ${(err as Error).message}`,
@@ -142,8 +149,8 @@ async function run(): Promise<void> {
 			const report = buildToolReport(input.tool, headFiles, baseArtifact, warnings);
 			toolReports.push(report);
 
-			// Check for decreases
-			if (report.summary.delta !== null && report.summary.delta < 0) {
+			// Match the public contract: any file-level decrease trips the flag.
+			if (report.files.some((file) => file.delta !== null && file.delta < 0)) {
 				anyDecrease = true;
 			}
 
@@ -172,7 +179,7 @@ async function run(): Promise<void> {
 		const markdown = renderReport(fullReport, marker, colorize, commitInfo);
 
 		// Set outputs
-		core.setOutput("overall-coverage", fullReport.overall.percent.toFixed(2));
+		core.setOutput("overall-coverage", formatPercentValue(fullReport.overall.percent));
 		core.setOutput("coverage-decreased", anyDecrease ? "true" : "false");
 
 		// Post / update PR comment
@@ -209,9 +216,7 @@ async function run(): Promise<void> {
 		// Threshold check
 		if (threshold > 0 && fullReport.overall.percent < threshold) {
 			core.setFailed(
-				`Overall coverage ${
-					fullReport.overall.percent.toFixed(2)
-				}% is below threshold ${threshold}%`,
+				`Overall coverage ${formatPercent(fullReport.overall.percent)} is below threshold ${threshold}%`,
 			);
 			return;
 		}
