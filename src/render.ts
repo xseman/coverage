@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+
 import {
 	formatPercent,
 	formatPercentValue,
@@ -6,6 +8,42 @@ import type {
 	CoverageReport,
 	ToolCoverageReport,
 } from "./types.js";
+
+const COVERAGE_DATA_PREFIX = "<!-- coverage-data:";
+const COVERAGE_DATA_SUFFIX = " -->";
+
+export interface EmbeddedCoverageData {
+	tools: ToolCoverageReport[];
+	baseSha?: string;
+}
+
+export function embedCoverageData(
+	markdown: string,
+	data: EmbeddedCoverageData,
+): string {
+	const json = JSON.stringify(data);
+	const encoded = Buffer.from(json).toString("base64");
+	return markdown + "\n" + COVERAGE_DATA_PREFIX + encoded + COVERAGE_DATA_SUFFIX;
+}
+
+export function extractCoverageData(
+	body: string,
+): EmbeddedCoverageData | null {
+	const start = body.indexOf(COVERAGE_DATA_PREFIX);
+	if (start === -1) return null;
+	const dataStart = start + COVERAGE_DATA_PREFIX.length;
+	const end = body.indexOf(COVERAGE_DATA_SUFFIX, dataStart);
+	if (end === -1) return null;
+	const encoded = body.slice(dataStart, end);
+	try {
+		const json = Buffer.from(encoded, "base64").toString("utf-8");
+		const parsed = JSON.parse(json);
+		if (!parsed || !Array.isArray(parsed.tools)) return null;
+		return parsed as EmbeddedCoverageData;
+	} catch {
+		return null;
+	}
+}
 
 export interface CommitInfo {
 	sha: string;
@@ -222,6 +260,19 @@ export function renderReport(
 		parts.push("```\n");
 	}
 
+	// Note tools missing baseline data
+	const toolsWithoutBase = report.tools.filter(
+		(t) => t.files.length > 0 && t.summary.baseTotalLines === null,
+	);
+	if (toolsWithoutBase.length > 0) {
+		const names = toolsWithoutBase.map((t) => `**${t.tool}**`).join(", ");
+		parts.push(
+			`> [!NOTE]\n> No cached baseline for ${names}. `
+				+ "Per-file deltas and the diff table will appear once the target branch has coverage cached. "
+				+ "Push to the base branch or trigger the workflow manually to seed the cache.\n",
+		);
+	}
+
 	for (const tool of report.tools) {
 		parts.push("```");
 		parts.push(renderToolSection(tool, colorize));
@@ -240,5 +291,12 @@ export function renderReport(
 		`<sub>Generated at ${report.generatedAt} by <a href="https://github.com/xseman/coverage">coverage</a></sub>`,
 	);
 
-	return parts.join("\n");
+	const markdown = parts.join("\n");
+
+	const embedded: EmbeddedCoverageData = {
+		tools: report.tools,
+		baseSha: commitInfo?.baseSha,
+	};
+
+	return embedCoverageData(markdown, embedded);
 }

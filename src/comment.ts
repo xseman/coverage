@@ -5,21 +5,21 @@ export interface CommentResult {
 	created: boolean;
 }
 
+export interface ExistingComment {
+	id: number;
+	body: string;
+}
+
 /**
- * Find an existing PR comment containing the given marker string,
- * then create or update accordingly.
+ * Find an existing PR comment containing the given marker string.
  */
-export async function upsertComment(
+export async function findComment(
 	token: string,
 	marker: string,
-	body: string,
 	prNumber: number,
-): Promise<CommentResult> {
+): Promise<ExistingComment | null> {
 	const octokit = github.getOctokit(token);
 	const { owner, repo } = github.context.repo;
-
-	// Paginate through existing comments to find the one with our marker
-	let existingCommentId: number | null = null;
 
 	for await (
 		const response of octokit.paginate.iterator(
@@ -29,12 +29,26 @@ export async function upsertComment(
 	) {
 		for (const comment of response.data) {
 			if (comment.body && comment.body.includes(marker)) {
-				existingCommentId = comment.id;
-				break;
+				return { id: comment.id, body: comment.body };
 			}
 		}
-		if (existingCommentId) break;
 	}
+
+	return null;
+}
+
+/**
+ * Find an existing PR comment containing the given marker string,
+ * then create or update accordingly.
+ */
+export async function upsertComment(
+	token: string,
+	body: string,
+	prNumber: number,
+	existingCommentId?: number,
+): Promise<CommentResult> {
+	const octokit = github.getOctokit(token);
+	const { owner, repo } = github.context.repo;
 
 	if (existingCommentId) {
 		await octokit.rest.issues.updateComment({

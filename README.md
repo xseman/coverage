@@ -24,8 +24,11 @@ multiple languages, and shows meaningful per-file diffs without external depende
 - Supports any LCOV-producing tool (Bun, Node.js, Jest, c8, nyc, Istanbul, PHPUnit, …) and Go coverage
 - Shows per-file coverage deltas against base branch
 - Single sticky PR comment (updates existing, no spam)
+- Multi-workflow merging — separate workflows contribute to the same comment automatically
 - Uses `@actions/cache` for cross-run comparison
+- Supports explicit PR number overrides and optional commit links in the comment header
 - Optional thresholds and fail-on-decrease
+- Omits the top-level comparison block when a full baseline is not available for every tool
 - No external services or tokens required
 
 ## Output example
@@ -35,7 +38,7 @@ multiple languages, and shows meaningful per-file diffs without external depende
 ## Usage
 
 ```yaml
-- uses: xseman/coverage@v0.2.0
+- uses: xseman/coverage@v0.3.0
   with:
       coverage-artifact-paths: bun:coverage/lcov.info
 ```
@@ -43,7 +46,7 @@ multiple languages, and shows meaningful per-file diffs without external depende
 With multiple tools and thresholds:
 
 ```yaml
-- uses: xseman/coverage@v0.2.0
+- uses: xseman/coverage@v0.3.0
   with:
       coverage-artifact-paths: |
           bun:coverage/lcov.info
@@ -67,10 +70,36 @@ jobs:
             - run: bun install
             - run: bun test --coverage --coverage-reporter=lcov
 
-            - uses: xseman/coverage@v0.2.0
+            - uses: xseman/coverage@v0.3.0
               with:
                   coverage-artifact-paths: bun:coverage/lcov.info
 ```
+
+### Multi-workflow setup
+
+When TypeScript and Go (or any other combination) tests run in separate workflows,
+use the **same `update-comment-marker`** value in both. The second workflow to finish
+will find the first comment, read its embedded tool data, merge the results, and
+update the comment in place — producing one combined report.
+
+```yaml
+# typescript-quality.yml
+- uses: xseman/coverage@v0.3.0
+  with:
+      update-comment-marker: "<!-- coverage-reporter-sticky -->"
+      coverage-artifact-paths: bun:typescript/coverage/lcov.info
+
+# go-quality.yml
+- uses: xseman/coverage@v0.3.0
+  with:
+      update-comment-marker: "<!-- coverage-reporter-sticky -->"
+      coverage-artifact-paths: go:go/coverage.out
+```
+
+If both workflows run at the same time and there is no existing comment yet, both
+may create their own comment. On the next commit push they will converge to one.
+Use workflow dependencies (`needs:`) or `concurrency` groups if immediate
+convergence on the first push is required.
 
 ## How it works
 
@@ -82,17 +111,13 @@ config:
     fontFamily: monospace
     fontSize: "10px"
 ---
-sequenceDiagram
-    participant F as Filesystem
-    participant A as Action
-    participant C as Cache
-    participant G as GitHub
 
-    F->>A: read coverage file
-    A->>C: restore base coverage
-    A->>A: compute deltas
-    A->>G: post PR comment
-    A->>C: save new coverage
+flowchart LR
+  A[Read coverage artifacts] --> B[Parse reports by tool]
+  B --> C[Restore cached base snapshot]
+  C --> D[Compute file deltas and summaries]
+  D --> E[Post or update one sticky PR comment]
+  E --> F[Save current snapshot for later comparisons]
 ```
 
 Each `<tool>:<path>` entry goes through this pipeline independently. Results
@@ -100,16 +125,56 @@ are combined into one PR comment. The action caches parsed coverage as JSON
 via `@actions/cache` using key `{prefix}-{tool}-{branch}-{sha}`, restoring
 by prefix match to find the latest base-branch snapshot.
 
+When the same `update-comment-marker` is used across multiple workflows, each
+run reads the previously embedded tool reports from the existing comment, merges
+its own results in (current tool takes priority), and rewrites the comment with
+the combined data.
+
+If every tool has a comparable base snapshot, the comment also includes an
+overall base vs head summary. If some tools do not have cached base data yet,
+the action still shows the per-tool sections and any available file deltas,
+but skips the top-level comparison block so partial baselines do not distort
+the summary. A note in the comment identifies which tools are missing a
+baseline.
+
+### Bootstrapping the cache
+
+The diff table compares head coverage against a cached snapshot from the target
+branch. On the first run (or when introducing a new tool) there is nothing to
+compare against, so deltas are omitted. The cache is seeded automatically when
+the workflow runs on a push to the base branch.
+
+To get diffs working immediately:
+
+1. Make sure the workflow triggers on **push** to the base branch (not just
+   `pull_request`), so coverage is cached after each merge.
+2. For a cold start, trigger the workflow manually on the base branch with
+   `workflow_dispatch`:
+
+```yaml
+on:
+    push:
+        branches: [master]
+    pull_request:
+        branches: [master]
+    workflow_dispatch: {}
+```
+
+Then run the workflow from the Actions tab on the base branch. The next PR
+will find the cached snapshot and show full deltas.
+
 ## Inputs
 
 | Input                     | Default                             | Description                                        |
 | ------------------------- | ----------------------------------- | -------------------------------------------------- |
 | `coverage-artifact-paths` | _(required)_                        | Newline or comma-separated `<tool>:<path>` entries |
+| `pull-request-number`     | auto-detected                       | Explicit PR number override for comment updates    |
+| `show-commit-link`        | `on`                                | Include commit link(s) at the top of the comment   |
 | `base-branch`             | PR base ref                         | Branch for delta comparison                        |
 | `cache-key`               | `coverage-reporter`                 | Cache key prefix                                   |
 | `update-comment-marker`   | `<!-- coverage-reporter-sticky -->` | HTML marker for sticky comment                     |
 | `colorize`                | `on`                                | `[+]`/`[-]` delta markers (`on`/`off`)             |
-| `fail-on-decrease`        | `false`                             | Fail if coverage decreases                         |
+| `fail-on-decrease`        | `false`                             | Fail if any file coverage decreases                |
 | `coverage-threshold`      | `0`                                 | Minimum overall coverage % (0 = disabled)          |
 | `github-token`            | `${{ github.token }}`               | Token for PR comments                              |
 
@@ -145,15 +210,6 @@ node --test \
 
 # Go
 go test -coverprofile=coverage.out ./...
-```
-
-## Development
-
-```bash
-bun install    # install dependencies
-bun test       # run tests
-bun run lint   # typecheck + format check
-bun run build  # bundle to lib/index.mjs
 ```
 
 ## Related
