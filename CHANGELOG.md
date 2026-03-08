@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/xseman/coverage/compare/v0.3.0...v0.4.0) (2026-03-08)
+
+
+### Features
+
+* multi-workflow PR comment merging ([#13](https://github.com/xseman/coverage/issues/13)) ([284b381](https://github.com/xseman/coverage/commit/284b381cb31475d69679a7ddcdb9b360ca115353))
+
+
+### Bug Fixes
+
+* align coverage diff columns ([#10](https://github.com/xseman/coverage/issues/10)) ([f25c903](https://github.com/xseman/coverage/commit/f25c903a4c7ba6fcab1dcb52ed6b1da7def2271a))
+
+
+### Build System
+
+* update lib/index.js ([23aefea](https://github.com/xseman/coverage/commit/23aefea8a5390141ce771609f50a30a2beaea33d))
+* update lib/index.js ([0d98092](https://github.com/xseman/coverage/commit/0d9809251b699b9d67b1347b2d2b00664d4f7fc4))
+
+
+### Maintenance
+
+* extract coverage parser and percent helpers ([#12](https://github.com/xseman/coverage/issues/12)) ([6a44dc7](https://github.com/xseman/coverage/commit/6a44dc791a5b229f8e7f4e8b778c7498267e3e97))
+
 ## [0.3.0](https://github.com/xseman/coverage/compare/v0.2.0...v0.3.0) (2026-03-05)
 
 
