@@ -9,7 +9,10 @@ import {
 	restoreBaseArtifact,
 	saveArtifact,
 } from "./cache.js";
-import { upsertComment } from "./comment.js";
+import {
+	findComment,
+	upsertComment,
+} from "./comment.js";
 import {
 	resolveBaseBranch,
 	resolveCurrentBranch,
@@ -28,7 +31,10 @@ import {
 	formatPercent,
 	formatPercentValue,
 } from "./percent.js";
-import { renderReport } from "./render.js";
+import {
+	extractCoverageData,
+	renderReport,
+} from "./render.js";
 import type {
 	ArtifactInput,
 	FileCoverage,
@@ -170,6 +176,36 @@ async function run(): Promise<void> {
 			}
 		}
 
+		// Resolve PR number early so we can look up the existing comment for merging
+		const prNumber = await resolvePrNumber(prNumberInput, token);
+
+		// Merge with previously stored tool reports from the same sticky comment.
+		// This allows separate workflows (e.g. TS and Go) to contribute to one comment.
+		let existingCommentId: number | undefined;
+		if (prNumber && token) {
+			try {
+				const existing = await findComment(token, marker, prNumber);
+				if (existing) {
+					existingCommentId = existing.id;
+					const stored = extractCoverageData(existing.body);
+					if (stored) {
+						const currentTools = new Set(toolReports.map((r) => r.tool));
+						for (const prev of stored.tools) {
+							if (!currentTools.has(prev.tool)) {
+								toolReports.push(prev);
+							}
+						}
+						if (!baseSha && stored.baseSha) {
+							baseSha = stored.baseSha;
+						}
+						core.info(`Merged ${stored.tools.length} stored tool report(s) from existing comment`);
+					}
+				}
+			} catch {
+				core.warning("Could not read existing comment for merging");
+			}
+		}
+
 		// Build full report
 		const fullReport = buildFullReport(toolReports);
 
@@ -183,11 +219,10 @@ async function run(): Promise<void> {
 		core.setOutput("coverage-decreased", anyDecrease ? "true" : "false");
 
 		// Post / update PR comment
-		const prNumber = await resolvePrNumber(prNumberInput, token);
 		if (prNumber && token) {
 			try {
 				core.info(`Upserting comment on PR #${prNumber}`);
-				const result = await upsertComment(token, marker, markdown, prNumber);
+				const result = await upsertComment(token, markdown, prNumber, existingCommentId);
 				core.setOutput("comment-id", result.commentId.toString());
 				core.info(
 					result.created
